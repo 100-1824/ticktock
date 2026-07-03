@@ -1,10 +1,12 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { signIn } from 'next-auth/react'
 import Button from '@/components/ui/Button'
 import Input from '@/components/ui/Input'
+
+const REMEMBERED_EMAIL_KEY = 'ticktock:remembered-email'
 
 export default function LoginForm() {
   const router = useRouter()
@@ -14,6 +16,15 @@ export default function LoginForm() {
   const [errors, setErrors] = useState<{ email?: string; password?: string }>({})
   const [authError, setAuthError] = useState('')
   const [submitting, setSubmitting] = useState(false)
+
+  // Prefill the email if the user previously checked "Remember me"
+  useEffect(() => {
+    const rememberedEmail = window.localStorage.getItem(REMEMBERED_EMAIL_KEY)
+    if (rememberedEmail) {
+      setEmail(rememberedEmail)
+      setRememberMe(true)
+    }
+  }, [])
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -33,6 +44,13 @@ export default function LoginForm() {
       setAuthError('Invalid email or password')
       return
     }
+
+    if (rememberMe) {
+      window.localStorage.setItem(REMEMBERED_EMAIL_KEY, email)
+    } else {
+      window.localStorage.removeItem(REMEMBERED_EMAIL_KEY)
+    }
+
     router.push('/dashboard')
   }
 
@@ -71,7 +89,7 @@ export default function LoginForm() {
         </label>
         {authError && <p className="text-sm text-red-600">{authError}</p>}
         <Button type="submit" disabled={submitting} className="w-full">
-          Sign in
+          {submitting ? 'Signing in...' : 'Sign in'}
         </Button>
       </form>
     </div>

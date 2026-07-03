@@ -39,16 +39,27 @@ export default function DashboardPage() {
   const router = useRouter()
   const [timesheets, setTimesheets] = useState<WeeklyTimesheet[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
   const [dateRange, setDateRange] = useState('')
   const [status, setStatus] = useState('')
   const [currentPage, setCurrentPage] = useState(1)
   const [perPage, setPerPage] = useState(5)
 
-  useEffect(() => {
+  function loadTimesheets() {
+    setLoading(true)
+    setError('')
     fetch('/api/timesheets')
-      .then((res) => res.json())
+      .then((res) => {
+        if (!res.ok) throw new Error('Failed to load timesheets')
+        return res.json()
+      })
       .then((data: WeeklyTimesheet[]) => setTimesheets(data))
+      .catch(() => setError('Something went wrong while loading your timesheets.'))
       .finally(() => setLoading(false))
+  }
+
+  useEffect(() => {
+    loadTimesheets()
   }, [])
 
   const filtered = timesheets.filter(
@@ -84,6 +95,17 @@ export default function DashboardPage() {
           {loading ? (
             <div className="flex justify-center py-16">
               <div className="h-8 w-8 animate-spin rounded-full border-2 border-blue-600 border-t-transparent" />
+            </div>
+          ) : error ? (
+            <div className="flex flex-col items-center gap-3 py-16 text-center">
+              <p className="text-sm text-red-600">{error}</p>
+              <button
+                type="button"
+                onClick={loadTimesheets}
+                className="text-sm font-medium text-blue-600 hover:text-blue-700"
+              >
+                Try again
+              </button>
             </div>
           ) : (
             <>

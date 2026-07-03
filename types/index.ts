@@ -31,4 +31,5 @@ export interface EntryFormValues {
   typeOfWork: string
   description: string
   hours: number
+  date: string
 }

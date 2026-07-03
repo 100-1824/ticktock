@@ -13,21 +13,38 @@ export default function WeekDetailPage({ params }: { params: { weekId: string } 
   const [week, setWeek] = useState<WeeklyTimesheet | null>(null)
   const [entries, setEntries] = useState<TimesheetEntry[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
   const [modalOpen, setModalOpen] = useState(false)
   const [editingEntry, setEditingEntry] = useState<TimesheetEntry | undefined>(undefined)
   const [selectedDate, setSelectedDate] = useState('')
   const [openMenuId, setOpenMenuId] = useState<string | null>(null)
+  const [deletingEntry, setDeletingEntry] = useState<TimesheetEntry | null>(null)
+  const [deleting, setDeleting] = useState(false)
 
-  useEffect(() => {
+  function loadWeek() {
+    setLoading(true)
+    setError('')
     Promise.all([
-      fetch('/api/timesheets').then((res) => res.json()),
-      fetch(`/api/timesheets/${weekId}`).then((res) => res.json()),
+      fetch('/api/timesheets').then((res) => {
+        if (!res.ok) throw new Error('Failed to load timesheets')
+        return res.json()
+      }),
+      fetch(`/api/timesheets/${weekId}`).then((res) => {
+        if (!res.ok) throw new Error('Failed to load entries')
+        return res.json()
+      }),
     ])
       .then(([weeks, weekEntries]: [WeeklyTimesheet[], TimesheetEntry[]]) => {
         setWeek(weeks.find((w) => w.id === weekId) ?? null)
         setEntries(weekEntries)
       })
+      .catch(() => setError('Something went wrong while loading this timesheet.'))
       .finally(() => setLoading(false))
+  }
+
+  useEffect(() => {
+    loadWeek()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [weekId])
 
   const totalHours = entries.reduce((sum, entry) => sum + entry.hours, 0)
@@ -46,22 +63,36 @@ export default function WeekDetailPage({ params }: { params: { weekId: string } 
     setModalOpen(true)
   }
 
-  function handleDelete(entryId: string) {
-    setEntries((current) => current.filter((entry) => entry.id !== entryId))
+  function requestDelete(entry: TimesheetEntry) {
+    setDeletingEntry(entry)
     setOpenMenuId(null)
   }
 
-  function handleSaved(values: EntryFormValues) {
+  async function confirmDelete() {
+    if (!deletingEntry) return
+    setDeleting(true)
+    try {
+      const res = await fetch(`/api/timesheets/${weekId}/entries/${deletingEntry.id}`, {
+        method: 'DELETE',
+      })
+      if (!res.ok) throw new Error('Failed to delete entry')
+      setEntries((current) => current.filter((entry) => entry.id !== deletingEntry.id))
+      setDeletingEntry(null)
+    } catch {
+      setError('Could not delete this entry. Please try again.')
+    } finally {
+      setDeleting(false)
+    }
+  }
+
+  function handleSaved(values: EntryFormValues, savedId?: string) {
     if (editingEntry) {
       setEntries((current) =>
         current.map((entry) => (entry.id === editingEntry.id ? { ...entry, ...values } : entry))
       )
       return
     }
-    setEntries((current) => [
-      ...current,
-      { ...values, id: crypto.randomUUID(), weekId, date: selectedDate },
-    ])
+    setEntries((current) => [...current, { ...values, id: savedId ?? crypto.randomUUID(), weekId }])
   }
 
   return (
@@ -72,6 +103,17 @@ export default function WeekDetailPage({ params }: { params: { weekId: string } 
           {loading ? (
             <div className="flex justify-center py-16">
               <div className="h-8 w-8 animate-spin rounded-full border-2 border-blue-600 border-t-transparent" />
+            </div>
+          ) : error ? (
+            <div className="flex flex-col items-center gap-3 py-16 text-center">
+              <p className="text-sm text-red-600">{error}</p>
+              <button
+                type="button"
+                onClick={loadWeek}
+                className="text-sm font-medium text-blue-600 hover:text-blue-700"
+              >
+                Try again
+              </button>
             </div>
           ) : (
             <>
@@ -144,7 +186,7 @@ export default function WeekDetailPage({ params }: { params: { weekId: string } 
                                       </button>
                                       <button
                                         type="button"
-                                        onClick={() => handleDelete(entry.id)}
+                                        onClick={() => requestDelete(entry)}
                                         className="block w-full px-4 py-1.5 text-left text-sm text-red-500 hover:bg-gray-50"
                                       >
                                         Delete
@@ -179,9 +221,45 @@ export default function WeekDetailPage({ params }: { params: { weekId: string } 
         isOpen={modalOpen}
         onClose={() => setModalOpen(false)}
         weekId={weekId}
+        defaultDate={selectedDate}
         entry={editingEntry}
         onSaved={handleSaved}
       />
+
+      {deletingEntry && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/50 p-4"
+          onClick={() => !deleting && setDeletingEntry(null)}
+        >
+          <div
+            className="w-full max-w-sm rounded-lg bg-white p-6 shadow-xl"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <h2 className="text-lg font-semibold text-gray-900">Delete entry?</h2>
+            <p className="mt-2 text-sm text-gray-600">
+              This will permanently remove &quot;{deletingEntry.description}&quot;. This action cannot be undone.
+            </p>
+            <div className="mt-5 flex gap-3">
+              <button
+                type="button"
+                disabled={deleting}
+                onClick={confirmDelete}
+                className="flex-1 rounded-md bg-red-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-red-700 disabled:opacity-50"
+              >
+                {deleting ? 'Deleting...' : 'Delete'}
+              </button>
+              <button
+                type="button"
+                disabled={deleting}
+                onClick={() => setDeletingEntry(null)}
+                className="flex-1 rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

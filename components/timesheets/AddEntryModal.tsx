@@ -10,8 +10,9 @@ interface AddEntryModalProps {
   isOpen: boolean
   onClose: () => void
   weekId: string
+  defaultDate: string
   entry?: TimesheetEntry
-  onSaved?: (values: EntryFormValues) => void
+  onSaved?: (values: EntryFormValues, savedId?: string) => void
 }
 
 const projectOptions = [
@@ -27,6 +28,9 @@ const typeOfWorkOptions = [
   { label: 'Testing', value: 'Testing' },
 ]
 
+const MIN_HOURS = 1
+const MAX_HOURS = 24
+
 function InfoIcon() {
   return (
     <svg className="h-3.5 w-3.5 text-gray-400" viewBox="0 0 16 16" fill="currentColor">
@@ -35,12 +39,20 @@ function InfoIcon() {
   )
 }
 
-export default function AddEntryModal({ isOpen, onClose, weekId, entry, onSaved }: AddEntryModalProps) {
+export default function AddEntryModal({
+  isOpen,
+  onClose,
+  weekId,
+  defaultDate,
+  entry,
+  onSaved,
+}: AddEntryModalProps) {
   const [projectName, setProjectName] = useState('')
   const [typeOfWork, setTypeOfWork] = useState('')
   const [description, setDescription] = useState('')
   const [hours, setHours] = useState(1)
   const [errors, setErrors] = useState<{ projectName?: string; typeOfWork?: string; description?: string }>({})
+  const [submitError, setSubmitError] = useState('')
   const [submitting, setSubmitting] = useState(false)
 
   // Reset form whenever the modal opens (prefilled in edit mode)
@@ -51,10 +63,12 @@ export default function AddEntryModal({ isOpen, onClose, weekId, entry, onSaved 
     setDescription(entry?.description ?? '')
     setHours(entry?.hours ?? 1)
     setErrors({})
+    setSubmitError('')
   }, [isOpen, entry])
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
+    setSubmitError('')
 
     const nextErrors: typeof errors = {}
     if (!projectName) nextErrors.projectName = 'Please select a project'
@@ -63,18 +77,31 @@ export default function AddEntryModal({ isOpen, onClose, weekId, entry, onSaved 
     setErrors(nextErrors)
     if (Object.keys(nextErrors).length > 0) return
 
-    const values: EntryFormValues = { projectName, typeOfWork, description, hours }
+    const safeHours = Math.min(MAX_HOURS, Math.max(MIN_HOURS, hours))
+    const values: EntryFormValues = {
+      projectName,
+      typeOfWork,
+      description,
+      hours: safeHours,
+      date: entry?.date ?? defaultDate,
+    }
 
     setSubmitting(true)
-    await fetch(`/api/timesheets/${weekId}/entries`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(values),
-    })
-    setSubmitting(false)
-
-    onSaved?.(values)
-    onClose()
+    try {
+      const res = await fetch(`/api/timesheets/${weekId}/entries`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(values),
+      })
+      if (!res.ok) throw new Error('Failed to save entry')
+      const data: { entry: TimesheetEntry } = await res.json()
+      onSaved?.(values, data.entry?.id)
+      onClose()
+    } catch {
+      setSubmitError('Could not save this entry. Please try again.')
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   return (
@@ -134,7 +161,7 @@ export default function AddEntryModal({ isOpen, onClose, weekId, entry, onSaved 
             <div className="inline-flex items-stretch overflow-hidden rounded-md border border-gray-300">
               <button
                 type="button"
-                onClick={() => setHours((h) => Math.max(1, h - 1))}
+                onClick={() => setHours((h) => Math.max(MIN_HOURS, h - 1))}
                 aria-label="Decrease hours"
                 className="bg-gray-100 px-3 py-1.5 text-gray-600 transition-colors hover:bg-gray-200"
               >
@@ -145,7 +172,7 @@ export default function AddEntryModal({ isOpen, onClose, weekId, entry, onSaved 
               </span>
               <button
                 type="button"
-                onClick={() => setHours((h) => Math.min(24, h + 1))}
+                onClick={() => setHours((h) => Math.min(MAX_HOURS, h + 1))}
                 aria-label="Increase hours"
                 className="bg-gray-100 px-3 py-1.5 text-gray-600 transition-colors hover:bg-gray-200"
               >
@@ -153,13 +180,15 @@ export default function AddEntryModal({ isOpen, onClose, weekId, entry, onSaved 
               </button>
             </div>
           </div>
+
+          {submitError && <p className="text-sm text-red-600">{submitError}</p>}
         </div>
 
         <div className="flex gap-4 border-t border-gray-200 px-6 py-4">
           <Button type="submit" disabled={submitting} className="flex-1">
-            {entry ? 'Update entry' : 'Add entry'}
+            {submitting ? 'Saving...' : entry ? 'Update entry' : 'Add entry'}
           </Button>
-          <Button variant="secondary" onClick={onClose} className="flex-1">
+          <Button variant="secondary" onClick={onClose} disabled={submitting} className="flex-1">
             Cancel
           </Button>
         </div>
