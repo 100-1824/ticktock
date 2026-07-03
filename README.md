@@ -1,5 +1,8 @@
 # ticktock — Timesheet Management App
 
+## Live demo
+https://ticktock-tentwenty.vercel.app
+
 ## Setup
 
 1. Clone the repo
