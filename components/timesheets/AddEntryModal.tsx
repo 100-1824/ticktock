@@ -12,7 +12,7 @@ interface AddEntryModalProps {
   weekId: string
   defaultDate: string
   entry?: TimesheetEntry
-  onSaved?: (values: EntryFormValues, savedId?: string) => void
+  onSaved?: (values: EntryFormValues, savedId: string) => void
 }
 
 const projectOptions = [
@@ -95,7 +95,7 @@ export default function AddEntryModal({
       })
       if (!res.ok) throw new Error('Failed to save entry')
       const data: { entry: TimesheetEntry } = await res.json()
-      onSaved?.(values, data.entry?.id)
+      onSaved?.(values, data.entry.id)
       onClose()
     } catch {
       setSubmitError('Could not save this entry. Please try again.')
@@ -105,7 +105,13 @@ export default function AddEntryModal({
   }
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title={entry ? 'Edit Entry' : 'Add New Entry'} maxWidth="max-w-xl">
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      title={entry ? 'Edit Entry' : 'Add New Entry'}
+      maxWidth="max-w-xl"
+      closeDisabled={submitting}
+    >
       <form onSubmit={handleSubmit} noValidate>
         <div className="space-y-4 px-6 py-5">
           <div>

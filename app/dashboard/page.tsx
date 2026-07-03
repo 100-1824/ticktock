@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Navbar from '@/components/layout/Navbar'
+import AsyncState from '@/components/ui/AsyncState'
 import Pagination from '@/components/ui/Pagination'
 import TimesheetFilters from '@/components/timesheets/TimesheetFilters'
 import TimesheetTable from '@/components/timesheets/TimesheetTable'
@@ -92,48 +93,31 @@ export default function DashboardPage() {
       <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
         <div className="rounded-lg bg-white p-6 shadow-sm">
           <h1 className="text-xl font-semibold text-gray-900">Your Timesheets</h1>
-          {loading ? (
-            <div className="flex justify-center py-16">
-              <div className="h-8 w-8 animate-spin rounded-full border-2 border-blue-600 border-t-transparent" />
+          <AsyncState loading={loading} error={error} onRetry={loadTimesheets}>
+            <div className="mt-5">
+              <TimesheetFilters
+                dateRange={dateRange}
+                status={status}
+                onDateRangeChange={handleDateRangeChange}
+                onStatusChange={handleStatusChange}
+              />
             </div>
-          ) : error ? (
-            <div className="flex flex-col items-center gap-3 py-16 text-center">
-              <p className="text-sm text-red-600">{error}</p>
-              <button
-                type="button"
-                onClick={loadTimesheets}
-                className="text-sm font-medium text-blue-600 hover:text-blue-700"
-              >
-                Try again
-              </button>
+            <div className="mt-5">
+              <TimesheetTable
+                timesheets={paginated}
+                onAction={(timesheet) => router.push(`/dashboard/${timesheet.id}`)}
+              />
             </div>
-          ) : (
-            <>
-              <div className="mt-5">
-                <TimesheetFilters
-                  dateRange={dateRange}
-                  status={status}
-                  onDateRangeChange={handleDateRangeChange}
-                  onStatusChange={handleStatusChange}
-                />
-              </div>
-              <div className="mt-5">
-                <TimesheetTable
-                  timesheets={paginated}
-                  onAction={(timesheet) => router.push(`/dashboard/${timesheet.id}`)}
-                />
-              </div>
-              <div className="mt-5">
-                <Pagination
-                  currentPage={currentPage}
-                  totalPages={totalPages}
-                  onPageChange={setCurrentPage}
-                  perPage={perPage}
-                  onPerPageChange={handlePerPageChange}
-                />
-              </div>
-            </>
-          )}
+            <div className="mt-5">
+              <Pagination
+                currentPage={currentPage}
+                totalPages={totalPages}
+                onPageChange={setCurrentPage}
+                perPage={perPage}
+                onPerPageChange={handlePerPageChange}
+              />
+            </div>
+          </AsyncState>
         </div>
         <footer className="mt-6 rounded-lg bg-white py-6 text-center text-sm text-gray-400 shadow-sm">
           © 2024 tentwenty. All rights reserved.

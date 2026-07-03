@@ -37,7 +37,14 @@ export default function LoginForm() {
     if (nextErrors.email || nextErrors.password) return
 
     setSubmitting(true)
-    const result = await signIn('credentials', { email, password, redirect: false })
+    let result
+    try {
+      result = await signIn('credentials', { email, password, redirect: false })
+    } catch {
+      setSubmitting(false)
+      setAuthError('Something went wrong. Please check your connection and try again.')
+      return
+    }
     setSubmitting(false)
 
     if (result?.error) {

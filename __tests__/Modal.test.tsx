@@ -44,4 +44,16 @@ describe('Modal', () => {
     fireEvent.click(container.firstChild as HTMLElement)
     expect(onClose).toHaveBeenCalledTimes(1)
   })
+
+  it('ignores backdrop clicks and disables the X button when closeDisabled', () => {
+    const onClose = jest.fn()
+    const { container } = render(
+      <Modal isOpen onClose={onClose} title="My Modal" closeDisabled>
+        <p>Body</p>
+      </Modal>
+    )
+    fireEvent.click(container.firstChild as HTMLElement)
+    expect(onClose).not.toHaveBeenCalled()
+    expect(screen.getByLabelText('Close')).toBeDisabled()
+  })
 })

@@ -33,6 +33,19 @@ describe('LoginForm', () => {
     expect(mockPush).not.toHaveBeenCalled()
   })
 
+  it('shows a network error and re-enables the form when signIn rejects', async () => {
+    mockSignIn.mockRejectedValue(new Error('network down'))
+    render(<LoginForm />)
+    fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'john@example.com' } })
+    fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'password123' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Sign in' }))
+    expect(
+      await screen.findByText('Something went wrong. Please check your connection and try again.')
+    ).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Sign in' })).not.toBeDisabled()
+    expect(mockPush).not.toHaveBeenCalled()
+  })
+
   it('redirects to the dashboard on success', async () => {
     mockSignIn.mockResolvedValue({ ok: true, error: null })
     render(<LoginForm />)
