@@ -25,9 +25,10 @@ https://ticktock-tentwenty.vercel.app
 
 Run `npm test` (or `npm run test:watch`).
 
-Jest + React Testing Library, 44 tests in `__tests__/`:
-- UI primitives — Button, Input, Modal, Dropdown, StatusBadge, Pagination
-- Feature components — TimesheetTable, TimesheetFilters, AddEntryModal (validation + submit), LoginForm (validation, invalid credentials, redirect)
+Jest + React Testing Library, 57 tests in `__tests__/`:
+- UI primitives — Button, Input, Modal, Dropdown, StatusBadge, Pagination, AsyncState
+- Feature components — TimesheetTable, TimesheetFilters, AddEntryModal (validation + submit), LoginForm (validation, invalid credentials, network failure, redirect), Navbar (user dropdown, logout)
+- Pages — WeekDetailPage delete-confirmation flow (confirm, cancel, failure keeps dialog open)
 - Logic — date helpers and mock data shape
 
 ## Frameworks/libraries
@@ -44,7 +45,8 @@ Jest + React Testing Library, 44 tests in `__tests__/`:
 - The week progress bar uses one inline width style — the percentage is dynamic and cannot be a static Tailwind class
 
 ## Time spent
-- ~6 hours
+- ~6 hours for the initial build
+- Additional time after submission spent on a self-driven code review pass: hardening API error handling, fixing a state-management bug in the delete flow, removing dead code, and expanding test coverage
 
 ## Project structure
 - `app/` — Next.js pages and API routes
